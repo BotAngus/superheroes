@@ -7,6 +7,8 @@ import com.sk89q.worldguard.bukkit.WorldGuardPlugin;
 import com.sk89q.worldguard.protection.ApplicableRegionSet;
 import com.sk89q.worldguard.protection.flags.Flag;
 import com.sk89q.worldguard.protection.flags.StateFlag;
+import com.sk89q.worldguard.protection.flags.registry.FlagConflictException;
+import com.sk89q.worldguard.protection.flags.registry.FlagRegistry;
 import com.sk89q.worldguard.protection.regions.RegionContainer;
 import com.sk89q.worldguard.protection.regions.RegionQuery;
 import com.sk89q.worldguard.session.MoveType;
@@ -34,6 +36,17 @@ public class WorldGuardSupport implements Listener {
         sessionManager.registerHandler(WorldGuardHandler.FACTORY, null);
     }
 
+    public static void setupFlag() {
+        FlagRegistry registry = WorldGuard.getInstance().getFlagRegistry();
+        try {
+            // create a flag with the name "my-custom-flag", defaulting to true
+            StateFlag flag = new StateFlag("allow-heroes", true);
+            registry.register(flag);
+        } catch (FlagConflictException e) {
+            e.printStackTrace();
+        }
+    }
+
     @EventHandler
     public void onHeroChange(PlayerChangedSuperheroEvent e) {
         if (e.getNewHero() == Superheroes.getInstance().getHeroHandler().getNoPower()) return;
@@ -45,12 +58,9 @@ public class WorldGuardSupport implements Listener {
             if (handler != null) {
                 if (getFlag(e.getPlayer(), allowHeroes) == StateFlag.State.DENY) {
                     handler.previousHero = e.getNewHero();
-                    new BukkitRunnable() {
-                        @Override
-                        public void run() {
-                            Superheroes.getInstance().getHeroHandler().setHeroInMemory(e.getPlayer(), Superheroes.getInstance().getHeroHandler().getNoPower(), false, PlayerChangedSuperheroEvent.Cause.WORLDGUARD);
-                        }
-                    }.runTask(Superheroes.getInstance());
+                    Superheroes.getScheduling().entitySpecificScheduler(e.getPlayer()).run(() -> {
+                        Superheroes.getInstance().getHeroHandler().setHeroInMemory(e.getPlayer(), Superheroes.getInstance().getHeroHandler().getNoPower(), false, PlayerChangedSuperheroEvent.Cause.WORLDGUARD);
+                    }, () -> {});
                 }
             }
         }

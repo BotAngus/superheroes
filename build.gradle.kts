@@ -1,5 +1,5 @@
 group = "me.xemor"
-version = "5.2.2"
+version = "6.0.3-BETA"
 description = "superheroes"
 java.sourceCompatibility = JavaVersion.VERSION_17
 
@@ -13,11 +13,13 @@ plugins {
 repositories {
     mavenCentral()
     maven { url = uri("https://hub.spigotmc.org/nexus/content/repositories/snapshots/") }
+    maven { url = uri("https://papermc.io/repo/repository/maven-public/")}
     maven { url = uri("https://repo.codemc.org/repository/maven-public") }
     maven { url = uri("https://github.com/deanveloper/SkullCreator/raw/mvn-repo/") }
     maven { url = uri("https://repo.minebench.de/") }
     maven { url = uri("https://repo.maven.apache.org/maven2/") }
     maven { url = uri("https://maven.enginehub.org/repo/")}
+    maven { url = uri("https://mvn-repo.arim.space/lesser-gpl3")}
     maven { url = uri("https://repo.xemor.zip/releases")}
     maven(url = "https://s01.oss.sonatype.org/content/repositories/snapshots/") {
         name = "sonatype-oss-snapshots"
@@ -36,8 +38,14 @@ dependencies {
     shadow("com.zaxxer:HikariCP:4.0.3")
     shadow("org.apache.commons:commons-lang3:3.12.0")
     shadow("io.sentry:sentry:6.29.0")
+    shadow("space.arim.morepaperlib:morepaperlib:0.4.3")
+    shadow("me.xemor:foliahacks:1.3")
     compileOnly("org.spigotmc:spigot-api:1.21-R0.1-SNAPSHOT")
     compileOnly("me.xemor:skillslibrary:2.23.0")
+    shadow("io.papermc:paperlib:1.0.7")
+    shadow("me.creeves:ParticlesLibrary:1.1-SNAPSHOT")
+    compileOnly("org.spigotmc:spigot-api:1.21-R0.1-SNAPSHOT")
+    compileOnly("me.xemor:skillslibrary:2.19.1")
     compileOnly("com.sk89q.worldguard:worldguard-bukkit:7.0.6")
 }
 
@@ -56,6 +64,10 @@ tasks.shadowJar {
     relocate("org.bstats", "me.xemor.superheroes.org.bstats")
     relocate("dev.bassett", "me.xemor.superheroes.dev.bassett")
     relocate("io.sentry", "me.xemor.sentry")
+    relocate("space.arim.morepaperlib", "me.xemor.superheroes.morepaperlib")
+    relocate("me.xemor.foliahacks", "me.xemor.superheroes.foliahacks")
+    relocate("me.creeves.ParticlesLibrary", "me.xemor.superheroes.ParticlesLibrary")
+    relocate("io.papermc.paperlib", "me.xemor.superheroes.paperlib")
     configurations = listOf(project.configurations.shadow.get())
     val folder = System.getenv("pluginFolder")
     destinationDirectory.set(file(folder))

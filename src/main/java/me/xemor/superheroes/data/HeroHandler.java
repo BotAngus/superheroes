@@ -1,10 +1,9 @@
 package me.xemor.superheroes.data;
 
-import com.sk89q.worldguard.bukkit.cause.Cause;
 import me.xemor.superheroes.Superhero;
 import me.xemor.superheroes.Superheroes;
 import me.xemor.superheroes.events.PlayerChangedSuperheroEvent;
-import me.xemor.superheroes.events.PlayerCheckSuperheroEvent;
+import me.xemor.superheroes.events.PlayerAsyncCheckSuperheroEvent;
 import me.xemor.superheroes.events.SuperheroPlayerJoinEvent;
 import me.xemor.superheroes.reroll.RerollGroup;
 import me.xemor.superheroes.skills.Skill;
@@ -14,23 +13,19 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
-import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
-import org.bukkit.scheduler.BukkitRunnable;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class HeroHandler {
-    private final HashMap<UUID, SuperheroPlayer> uuidToData = new HashMap<>();
-    private final ConcurrentHashMap<UUID, CompletableFuture<SuperheroPlayer>> isProcessing = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<UUID, SuperheroPlayer> uuidToData = new ConcurrentHashMap<>();
     private final Superheroes superheroes;
     private final ConfigHandler configHandler;
     private Superhero noPower;
@@ -85,7 +80,7 @@ public class HeroHandler {
         if (player.getGameMode() == GameMode.SPECTATOR && !hero.hasSkill(Skill.getSkill("PHASE"))) {
             return noPower;
         }
-        PlayerCheckSuperheroEvent event = new PlayerCheckSuperheroEvent(hero, player);
+        PlayerAsyncCheckSuperheroEvent event = new PlayerAsyncCheckSuperheroEvent(hero, player);
         Bukkit.getServer().getPluginManager().callEvent(event);
         return event.getSuperhero();
     }
@@ -157,23 +152,23 @@ public class HeroHandler {
                     setHero(p, superhero);
                 }
                 chestInterface.getInteractions().getData()[0] = true;
+                player.closeInventory();
             });
             if (this.configHandler.canCloseGUI()) continue;
-            chestInterface.getInteractions().addCloseInteraction(p -> new BukkitRunnable() {
-
-                public void run() {
-                    if (!((boolean[]) chestInterface.getInteractions().getData())[0]) {
-                        openHeroGUI(player);
-                    }
-                }
-            }.runTaskLater(superheroes, 1L));
+            chestInterface.getInteractions().addCloseInteraction(p -> Superheroes.getScheduling().entitySpecificScheduler(player)
+                    .runDelayed(() -> {
+                        if (!((boolean[]) chestInterface.getInteractions().getData())[0]) {
+                            openHeroGUI(player);
+                        }
+                    }, () -> {}, 1L)
+            );
         }
         player.openInventory(chestInterface.getInventory());
     }
 
     public void loadSuperheroPlayer(@NotNull Player player) {
         CompletableFuture<SuperheroPlayer> future = heroIOHandler.loadSuperHeroPlayerAsync(player.getUniqueId());
-        future.thenAccept(superheroPlayer -> Bukkit.getScheduler().runTask(superheroes, () -> {
+        future.thenAccept(superheroPlayer -> Superheroes.getScheduling().entitySpecificScheduler(player).run(() -> {
             Superhero superhero;
             if (superheroPlayer != null) {
                 uuidToData.put(player.getUniqueId(), superheroPlayer);
@@ -189,7 +184,7 @@ public class HeroHandler {
             }
             SuperheroPlayerJoinEvent playerJoinEvent = new SuperheroPlayerJoinEvent(superhero, player);
             Bukkit.getPluginManager().callEvent(playerJoinEvent);
-        }));
+        }, () -> {}));
     }
 
     public void unloadSuperheroPlayer(@NotNull Player player) {

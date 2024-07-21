@@ -1,5 +1,6 @@
 package me.xemor.superheroes.skills.implementations;
 
+import me.xemor.foliahacks.PlayerPostRespawnFoliaEvent;
 import me.xemor.superheroes.Superheroes;
 import me.xemor.superheroes.data.HeroHandler;
 import me.xemor.superheroes.events.PlayerChangedSuperheroEvent;
@@ -225,25 +226,22 @@ public class GiveItemSkill extends SkillImplementation {
     }
 
     @EventHandler
-    public void onRespawn(final PlayerRespawnEvent e) {
+    public void onRespawn(final PlayerPostRespawnFoliaEvent e) {
         if (e.getPlayer().hasMetadata("superheroes-giveitems")) {
-            new BukkitRunnable() {
-
-                public void run() {
-                    Player player = e.getPlayer();
-                    Collection<SkillData> skillDatas = heroHandler.getSuperhero(player).getSkillData(Skill.getSkill("GIVEITEM"));
-                    for (SkillData skillData : skillDatas) {
-                        GiveItemData giveItemData = (GiveItemData) skillData;
-                        if (giveItemData.canLoseOnDeath()) continue;
-                        HashMap<Integer, ItemStack> leftovers = player.getInventory().addItem(giveItemData.getItemStackData().getItem());
-                        World world = e.getPlayer().getWorld();
-                        Location location = e.getPlayer().getLocation();
-                        for (ItemStack items : leftovers.values()) {
-                            world.dropItem(location, items);
-                        }
+            Player player = e.getPlayer();
+            Superheroes.getScheduling().entitySpecificScheduler(player).runDelayed(() -> {
+                Collection<SkillData> skillDatas = heroHandler.getSuperhero(player).getSkillData(Skill.getSkill("GIVEITEM"));
+                for (SkillData skillData : skillDatas) {
+                    GiveItemData giveItemData = (GiveItemData) skillData;
+                    if (giveItemData.canLoseOnDeath()) continue;
+                    HashMap<Integer, ItemStack> leftovers = player.getInventory().addItem(giveItemData.getItemStackData().getItem());
+                    World world = e.getPlayer().getWorld();
+                    Location location = e.getPlayer().getLocation();
+                    for (ItemStack items : leftovers.values()) {
+                        world.dropItem(location, items);
                     }
                 }
-            }.runTaskLater(JavaPlugin.getPlugin(Superheroes.class), 1L);
+            }, () -> {},1L);
             e.getPlayer().removeMetadata("superheroes-giveitems", Superheroes.getInstance());
         }
     }
